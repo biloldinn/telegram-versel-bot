@@ -2,6 +2,8 @@ import telebot
 from telebot import types
 import database
 import time
+import os
+from threading import Thread
 
 # --- Configuration ---
 API_TOKEN = '8417577678:AAH6RXAvwsaEuhKSCq6AsC83tG5QBtd0aJk'
@@ -344,8 +346,33 @@ def admin_panel(message):
     
     bot.send_message(ADMIN_ID, msg, parse_mode='Markdown')
 
+# --- Simple HTTP Server for Render ---
+def run_http_server():
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Bot is running!')
+        
+        def log_message(self, format, *args):
+            pass  # Suppress logs
+    
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"HTTP server listening on port {port}")
+    server.serve_forever()
+
 if __name__ == '__main__':
     print("="*60)
     print("🤖 BOT ISHGA TUSHDI!")
     print("="*60)
+    
+    # Start HTTP server in background thread (for Render)
+    if os.environ.get('RENDER'):
+        http_thread = Thread(target=run_http_server, daemon=True)
+        http_thread.start()
+    
     bot.infinity_polling()
