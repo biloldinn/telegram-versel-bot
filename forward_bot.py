@@ -2,6 +2,7 @@ import telebot
 import os
 import time
 import urllib.request
+import logging
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telebot import types
@@ -9,12 +10,27 @@ from telebot import types
 # --- KONFIGURATSIYA ---
 TOKEN = "8417577678:AAH6RXAvwsaEuhKSCq6AsC83tG5QBtd0aJk"
 SOURCE_CHANNEL = "@TOSHKENTANGRENTAKSI"
-DESTINATION_CHANNEL = "@Uski_kur"
+DESTINATION_CHANNEL = "@Uski_kur"  # Zakazlar va forwardlar shu yerga tushadi
 
 bot = telebot.TeleBot(TOKEN)
 
-# Foydalanuvchi holatlarini saqlash (Taksi zakaz qilish uchun)
+# Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Foydalanuvchi holatlarini saqlash
 user_states = {}
+
+# --- KEYBOARDS ---
+def get_main_keyboard():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton("🚖 Taksi Chaqirish"))
+    return markup
+
+def get_cancel_keyboard():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton("❌ Bekor qilish"))
+    return markup
 
 # --- HELPER FUNCTIONS ---
 def get_sender_info(message):
@@ -51,18 +67,24 @@ def forward_logic(message):
             bot.send_audio(DESTINATION_CHANNEL, message.audio.file_id, caption=full_header + (message.caption or ""), parse_mode='HTML')
         elif message.content_type == 'document':
             bot.send_document(DESTINATION_CHANNEL, message.document.file_id, caption=full_header + (message.caption or ""), parse_mode='HTML')
-        else:
-            bot.send_message(DESTINATION_CHANNEL, full_header + f"📎 <b>Xabar turi:</b> {message.content_type}")
-        print(f"✅ Ko'chirildi: {current_chat}")
+        
+        logger.info(f"✅ Xabar ko'chirildi: {current_chat}")
     except Exception as e:
-        print(f"❌ Forward xatosi: {e}")
+        logger.error(f"❌ Forward xatosi: {e}")
 
 # --- TAXI BOOKING FLOW ---
 @bot.message_handler(func=lambda m: m.text == "🚖 Taksi Chaqirish")
 def taxi_start(message):
     user_id = message.from_user.id
     user_states[user_id] = {'step': 'WAIT_NAME', 'data': {}}
-    bot.send_message(user_id, "🚖 <b>Taksi zakaz qilish boshlandi.</b>\n\nIsmingizni kiriting:", parse_mode='HTML', reply_markup=types.ReplyKeyboardRemove())
+    bot.send_message(user_id, "🚖 <b>Taksi zakaz qilish boshlandi.</b>\n\nIsmingizni kiriting:", parse_mode='HTML', reply_markup=get_cancel_keyboard())
+
+@bot.message_handler(func=lambda m: m.text == "❌ Bekor qilish")
+def cancel_booking(message):
+    user_id = message.from_user.id
+    if user_id in user_states:
+        del user_states[user_id]
+    bot.send_message(user_id, "❌ Zakaz bekor qilindi.", reply_markup=get_main_keyboard())
 
 def handle_taxi_steps(message):
     user_id = message.from_user.id
@@ -71,62 +93,87 @@ def handle_taxi_steps(message):
 
     step = state['step']
     
-    if step == 'WAIT_NAME':
-        state['data']['name'] = message.text
-        state['step'] = 'WAIT_PHONE'
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add(types.KeyboardButton("📞 Telefon yuborish", request_contact=True))
-        bot.send_message(user_id, "Telefon raqamingizni yuboring:", reply_markup=markup)
-        return True
-
-    elif step == 'WAIT_PHONE':
-        state['data']['phone'] = message.contact.phone_number if message.content_type == 'contact' else message.text
-        state['step'] = 'WAIT_DEST'
-        bot.send_message(user_id, "Qayerga borasiz?", reply_markup=types.ReplyKeyboardRemove())
-        return True
-
-    elif step == 'WAIT_DEST':
-        state['data']['dest'] = message.text
-        state['step'] = 'WAIT_LOC'
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add(types.KeyboardButton("📍 Lokatsiyani yuborish", request_location=True))
-        bot.send_message(user_id, "Lokatsiyangizni yuboring (tugmani bosing):", reply_markup=markup)
-        return True
-
-    elif step == 'WAIT_LOC':
-        if message.content_type == 'location':
-            data = state['data']
-            order_text = (
-                f"🚖 <b>YANGI TAKSI ZAKAZI!</b>\n\n"
-                f"👤 <b>Ism:</b> {data['name']}\n"
-                f"📞 <b>Tel:</b> {data['phone']}\n"
-                f"📍 <b>Manzil:</b> {data['dest']}\n"
-                f"🆔 <b>ID:</b> {user_id}"
-            )
-            bot.send_message(DESTINATION_CHANNEL, order_text, parse_mode='HTML')
-            bot.send_location(DESTINATION_CHANNEL, message.location.latitude, message.location.longitude)
-            bot.send_message(user_id, "✅ <b>Zakazingiz qabul qilindi!</b>", parse_mode='HTML', reply_markup=get_main_keyboard())
-            del user_states[user_id]
+    try:
+        if step == 'WAIT_NAME':
+            state['data']['name'] = message.text
+            state['step'] = 'WAIT_PHONE'
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+            markup.add(types.KeyboardButton("📞 Telefon yuborish", request_contact=True))
+            markup.add(types.KeyboardButton("❌ Bekor qilish"))
+            bot.send_message(user_id, "Raxmat. Endi telefon raqamingizni yuboring:", reply_markup=markup)
             return True
+
+        elif step == 'WAIT_PHONE':
+            if message.content_type == 'contact':
+                state['data']['phone'] = message.contact.phone_number
+            else:
+                state['data']['phone'] = message.text
+            
+            state['step'] = 'WAIT_DEST'
+            bot.send_message(user_id, "Qayerga borasiz? (Manzilni yozing):", reply_markup=get_cancel_keyboard())
+            return True
+
+        elif step == 'WAIT_DEST':
+            state['data']['dest'] = message.text
+            state['step'] = 'WAIT_LOC'
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+            markup.add(types.KeyboardButton("📍 Lokatsiyani yuborish", request_location=True))
+            markup.add(types.KeyboardButton("❌ Bekor qilish"))
+            bot.send_message(user_id, "Lokatsiyangizni yuboring (tugmani bosing):", reply_markup=markup)
+            return True
+
+        elif step == 'WAIT_LOC':
+            if message.content_type == 'location':
+                data = state['data']
+                order_text = (
+                    f"🚖 <b>YANGI TAKSI ZAKAZI!</b>\n\n"
+                    f"👤 <b>Ism:</b> {data['name']}\n"
+                    f"📞 <b>Tel:</b> {data['phone']}\n"
+                    f"📍 <b>Manzil:</b> {data['dest']}\n"
+                    f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
+                    f"🔗 <b>Username:</b> @{message.from_user.username or 'yoq'}"
+                )
+                
+                # Guruhga yuborish
+                bot.send_message(DESTINATION_CHANNEL, order_text, parse_mode='HTML')
+                bot.send_location(DESTINATION_CHANNEL, message.location.latitude, message.location.longitude)
+                
+                # Foydalanuvchiga tasdiqlash
+                bot.send_message(user_id, "✅ <b>Zakazingiz qabul qilindi!</b>\nTez orada haydovchilar bog'lanadi.", parse_mode='HTML', reply_markup=get_main_keyboard())
+                
+                logger.info(f"✅ Yangi zakaz: {user_id}")
+                del user_states[user_id]
+                return True
+            else:
+                bot.send_message(user_id, "Iltimos, lokatsiyani yuborish tugmasini bosing yoki bekor qiling.", reply_markup=get_cancel_keyboard())
+                return True
+    except Exception as e:
+        logger.error(f"Booking flow error: {e}")
+        bot.send_message(user_id, "❌ Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.", reply_markup=get_main_keyboard())
+        if user_id in user_states: del user_states[user_id]
+        return True
+        
     return False
 
-def get_main_keyboard():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton("🚖 Taksi Chaqirish"))
-    return markup
-
+# --- HANDLERLAR ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
-    bot.send_message(message.chat.id, "✅ <b>Bot ishlamoqda!</b>", parse_mode='HTML', reply_markup=get_main_keyboard())
+    user_id = message.from_user.id
+    if user_id in user_states: del user_states[user_id]
+    bot.send_message(message.chat.id, "✅ <b>Bot ishlamoqda!</b>\n\nTaksi chaqirish uchun tugmani bosing.", parse_mode='HTML', reply_markup=get_main_keyboard())
 
 @bot.channel_post_handler(func=lambda m: True, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def channel_msg(message):
     forward_logic(message)
 
 @bot.message_handler(content_types=['text', 'contact', 'location'])
-def group_msg(message):
-    if not handle_taxi_steps(message):
-        forward_logic(message)
+def handle_all_messages(message):
+    # Taksi booking jarayonini tekshirish
+    if handle_taxi_steps(message):
+        return
+    
+    # Kanal forward logikasi (agar SOURCE_CHANNEL dan kelsa)
+    forward_logic(message)
 
 # --- RENDER SERVER & KEEP AWAKE ---
 class HealthCheck(BaseHTTPRequestHandler):
@@ -136,18 +183,24 @@ class HealthCheck(BaseHTTPRequestHandler):
 
 def keep_awake():
     url = os.environ.get('RENDER_EXTERNAL_URL')
-    if not url: return
+    if not url:
+        logger.warning("⚠️ RENDER_EXTERNAL_URL topilmadi.")
+        return
     while True:
         try:
             time.sleep(600)
             urllib.request.urlopen(url).read()
-            print(f"⏰ Ping OK: {time.ctime()}")
-        except: pass
+            logger.info(f"⏰ Self-ping OK: {time.ctime()}")
+        except Exception as e:
+            logger.error(f"❌ Self-ping error: {e}")
 
 if __name__ == "__main__":
     if os.environ.get('PORT'):
-        Thread(target=lambda: HTTPServer(('0.0.0.0', int(os.environ.get('PORT', 10000))), HealthCheck).serve_forever(), daemon=True).start()
+        port = int(os.environ.get('PORT', 10000))
+        Thread(target=lambda: HTTPServer(('0.0.0.0', port), HealthCheck).serve_forever(), daemon=True).start()
+    
     if os.environ.get('RENDER_EXTERNAL_URL'):
         Thread(target=keep_awake, daemon=True).start()
-    print("🤖 Bot tayyor...")
+        
+    logger.info("🤖 Bot ishga tushdi...")
     bot.infinity_polling()
