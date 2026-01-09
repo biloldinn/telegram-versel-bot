@@ -69,7 +69,16 @@ def forward_logic(message):
             bot.send_document(DESTINATION_CHANNEL, message.document.file_id, caption=full_header + (message.caption or ""), parse_mode='HTML')
         
         logger.info(f"✅ Xabar ko'chirildi: {current_chat}")
+
+        # --- YANGI: Xabarni o'chirish logikasi ---
+        try:
+            bot.delete_message(message.chat.id, message.message_id)
+            logger.info(f"🗑 Xabar manba kanaldan o'chirildi: {message.message_id}")
+        except Exception as del_e:
+            logger.warning(f"⚠️ Xabarni o'chirishda xatolik (Ruxsat bormi?): {del_e}")
+
     except Exception as e:
+
         logger.error(f"❌ Forward xatosi: {e}")
 
 # --- TAXI BOOKING FLOW ---
