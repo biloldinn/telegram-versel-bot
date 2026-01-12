@@ -376,10 +376,10 @@ def toggle_promo_callback(call):
 
 # --- NEW: PERIODIC PROMO POST ---
 def periodic_promo():
-    """Har 15 daqiqada kanalga batafsil reklama postini chiqaradi"""
+    """Har 5 daqiqada kanalga batafsil reklama postini chiqaradi"""
     while True:
         try:
-            time.sleep(900) # 15 daqiqa (900 soniya)
+            time.sleep(300) # 5 daqiqa (300 soniya)
             if not PROMO_ENABLED:
                 continue
                 
@@ -387,7 +387,7 @@ def periodic_promo():
             promo_text = (
                 "👋 ASSALOMU ALAYKUM, HURMATLI GURUH A’ZOLARI!\n\n"
                 "🚕 ANGREN — TOSHKENT VA VILOYATLAR YO‘NALISHIDA TAKSI XIZMATI FAOL!\n"
-                "💬 BU GURUHDA BEMALOL YOZISHINGIZ, SAVOL BERISHINGIZ VA MA’LUMOT OLISHINGIZ MUNKIN!\n"
+                "💬 BU GURUHDA BEMALOL YOZISHINGIZ, SAVOL BERISHINGIZ VA MA’LUMOT OLISHINGIZ MUMKIN!\n"
                 "⏱️ BUYURTMALAR BOT ORQALI 5 DAQIQA ICHIDA SIZ BILAN BOG‘LANADI.\n"
                 "✅ ISHONCHLI VA QULAY XIZMAT!\n"
                 "📲 BOT ORQALI ZAKAZ BERISH:\n"
