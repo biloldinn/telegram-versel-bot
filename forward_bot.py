@@ -8,8 +8,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telebot import types
 
 # --- KONFIGURATSIYA ---
-# Version: 2.1.0 (Final Stable - Conflict Resolved)
-TOKEN = "8417577678:AAH6RXAvwsaEuhKSCq6AsC83tG5QBtd0aJk"
+TOKEN = "8580639697:AAFPv5TYWiWFXFxaMYQWPN7JzCwMUMYkVIQ"
 SOURCE_CHANNEL = "@TOSHKENTANGRENTAKSI"
 DESTINATION_CHANNEL = "@Uski_kur"  # Zakazlar va forwardlar shu yerga tushadi
 
@@ -225,7 +224,7 @@ def handle_taxi_steps(message):
                     bot.send_message(user_id, "❌ Uzr, texnik sabablarga ko'ra buyurtmani guruhga yuborib bo'lmadi. Admin bilan bog'laning.")
                 
                 # Foydalanuvchiga tasdiqlash
-                bot.send_message(user_id, "✅ <b>Buyurtmangiz qabul qilindi!</b>\nTez orada haydovchilarimiz aloqaga chiqishadi. Raxmat!", parse_mode='HTML', reply_markup=get_main_keyboard())
+                bot.send_message(user_id, "✅ <b>Buyurtmangiz qabul qilindi!</b>\nTez orada siz bilan bog'lanamiz. Raxmat!", parse_mode='HTML', reply_markup=get_main_keyboard())
                 
                 logger.info(f"✅ Yangi zakaz: {user_id}")
                 del user_states[user_id]
