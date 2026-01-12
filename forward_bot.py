@@ -386,10 +386,10 @@ def toggle_promo_callback(call):
 
 # --- NEW: PERIODIC PROMO POST ---
 def periodic_promo():
-    """Har 5 daqiqada kanalga batafsil reklama postini chiqaradi"""
+    """Har 3 daqiqada kanalga batafsil reklama postini chiqaradi"""
     while True:
         try:
-            time.sleep(300) # 5 daqiqa (300 soniya)
+            time.sleep(180) # 3 daqiqa (180 soniya)
             if not PROMO_ENABLED:
                 continue
                 
@@ -413,7 +413,7 @@ def periodic_promo():
                 f"👉 @{bot_username}"
             )
             bot.send_message(SOURCE_CHANNEL, promo_text, parse_mode='HTML')
-            logger.info("📢 Batafsil promo post yuborildi.")
+            logger.info("📢 3 daqiqalik promo post yuborildi.")
         except Exception as e:
             logger.error(f"Promo error: {e}")
 
