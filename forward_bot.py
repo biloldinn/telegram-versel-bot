@@ -25,7 +25,7 @@ user_states = {}
 # --- KEYBOARDS ---
 def get_main_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton("🚖 Taksi Chaqirish"))
+    markup.add(types.KeyboardButton("🚖 Taksi Chaqirish"), types.KeyboardButton("📦 Pochta yuborish"))
     return markup
 
 def get_cancel_keyboard():
@@ -115,19 +115,21 @@ def get_join_markup():
     markup.add(types.InlineKeyboardButton("Tekshirish ✅", callback_data="check_join"))
     return markup
 
-@bot.message_handler(func=lambda m: m.text == "🚖 Taksi Chaqirish")
+@bot.message_handler(func=lambda m: m.text in ["🚖 Taksi Chaqirish", "📦 Pochta yuborish"])
 def taxi_start(message):
     user_id = message.from_user.id
+    service_type = "TAKSI" if "Taksi" in message.text else "POCHTA"
+    
     if not check_membership(user_id):
         bot.send_message(user_id, (
             "⚠️ <b>Kanalga a'zo emassiz!</b>\n\n"
-            "Taksi buyurtma berish uchun avval bizning rasmiy kanalimizga a'zo bo'ling. "
+            "Xizmatdan foydalanish uchun avval bizning rasmiy kanalimizga a'zo bo'ling. "
             "Keyin 'Tekshirish' tugmasini bosing."
         ), parse_mode='HTML', reply_markup=get_join_markup())
         return
 
-    user_states[user_id] = {'step': 'WAIT_NAME', 'data': {}}
-    bot.send_message(user_id, "🚖 <b>Taksi zakaz qilish boshlandi.</b>\n\nIsmingizni kiriting:", parse_mode='HTML', reply_markup=get_cancel_keyboard())
+    user_states[user_id] = {'step': 'WAIT_NAME', 'data': {'type': service_type}}
+    bot.send_message(user_id, f"✅ <b>{service_type} xizmati tanlandi.</b>\n\nIsmingizni kiriting:", parse_mode='HTML', reply_markup=get_cancel_keyboard())
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_join")
 def verify_join(call):
@@ -192,8 +194,11 @@ def handle_taxi_steps(message):
                 name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Foydalanuvchi"
                 profile_link = f'<b><a href="tg://user?id={user.id}">{name}</a></b>'
 
+                order_type = data.get('type', 'TAKSI')
+                title_emoji = "🚖" if order_type == "TAKSI" else "📦"
+                
                 order_text = (
-                    f"✨ <b>YANGI TAKSI BUYURTMASI</b> ✨\n"
+                    f"{title_emoji} <b>YANGI {order_type} BUYURTMASI</b> {title_emoji}\n"
                     f"━━━━━━━━━━━━━━━━━━━\n"
                     f"👤 <b>Mijoz:</b> {profile_link}\n"
                     f"📞 <b>Telefon:</b> <code>{data['phone']}</code>\n"
@@ -201,7 +206,7 @@ def handle_taxi_steps(message):
                     f"━━━━━━━━━━━━━━━━━━━\n"
                     f"🕒 <b>Vaqt:</b> <code>{time.strftime('%H:%M')}</code>\n"
                     f"🆔 <b>Mijoz ID:</b> <code>{user_id}</code>\n"
-                    f"🚀 <i>3 daqiqada taksi chaqiring!</i>"
+                    f"🚀 <i>{order_type.lower().capitalize()} buyurtmangiz qabul qilindi!</i>"
                 )
                 
                 # Guruhga yuborish
@@ -326,21 +331,31 @@ def toggle_promo_callback(call):
 
 # --- NEW: PERIODIC PROMO POST ---
 def periodic_promo():
-    """Har 3 daqiqada kanalga chiroyli reklama postini chiqaradi"""
+    """Har 15 daqiqada kanalga chiroyli reklama postini chiqaradi"""
     while True:
         try:
-            time.sleep(600) # 10 daqiqa
+            time.sleep(900) # 15 daqiqa (900 soniya)
             if not PROMO_ENABLED:
                 continue
                 
+            bot_username = bot.get_me().username
             promo_text = (
-                f"⚡️ <b>TEZKOR TAKSI BUYURTMASI!</b> ⚡️\n\n"
-                f"🏁 <b>3 daqiqada</b> manzilga yetib boramiz!\n"
-                f"💎 <b>Premium sifat — Hamyonbop narx.</b>\n\n"
-                f"👇 <b>BUYURTMA BERISH UCHUN:</b>\n"
-                f"👉 @{(bot.get_me().username)} 👈\n"
-                f"👉 @{(bot.get_me().username)} 👈\n\n"
-                f"🏆 <i>Xizmatimizdan foydalaning va rohatlaning!</i>"
+                "👋 ASSALOMU ALAYKUM, HURMATLI GURUH A’ZOLARI!\n\n"
+                "🚕 ANGREN — TOSHKENT VA VILOYATLAR YO‘NALISHIDA TAKSI XIZMATI FAOL!\n"
+                "💬 BU GURUHDA BEMALOL YOZISHINGIZ, SAVOL BERISHINGIZ VA MA’LUMOT OLISHINGIZ MUMKIN!\n"
+                "⏱️ BUYURTMALAR BOT ORQALI 10 DAQIQA ICHIDA SIZ BILAN BOG‘LANADI.\n"
+                "✅ ISHONCHLI VA QULAY XIZMAT!\n"
+                "📲 BOT ORQALI ZAKAZ BERISH:\n"
+                f"👉 @{bot_username}\n\n"
+                "🙏 BIZNI TANLAGANINGIZDAN MAMNUN BO‘LAMIZ!\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "👋 ПРИВЕТСТВУЕМ ВАС, УВАЖАЕМЫЕ УЧАСТНИКИ ГРУППЫ!\n\n"
+                "🚕 АНГРЕН — НАПРАВЛЕНИЕ ТОШКЕНТ, ТАКСИ СЕРВИС РАБОТАЕТ!\n"
+                "💬 В ЭТОЙ ГРУППЕ МОЖНО СВОБОДНО ПИСАТЬ, ЗАДАВАТЬ ВОПРОСЫ И ПОЛУЧАТЬ ИНФОРМАЦИЮ!\n"
+                "⏱️ ЗАКАЗЫ ЧЕРЕЗ БОТ ПРИНИМАЮТСЯ И В ТЕЧЕНИЕ 10 МИНУТ С ВАМИ СВЯЖУТСЯ.\n"
+                "✅ НАДЁЖНО И УДОБНО!\n"
+                "📲 ДЛЯ ЗАКАЗА ИСПОЛЬЗУЙТЕ БОТ:\n"
+                f"👉 @{bot_username}"
             )
             bot.send_message(SOURCE_CHANNEL, promo_text, parse_mode='HTML')
             logger.info("📢 Promo post kanalga yuborildi.")
@@ -367,4 +382,15 @@ if __name__ == "__main__":
         logger.warning(f"⚠️ Webhook tozalashda xato: {e}")
         
     logger.info("🤖 Bot ishga tushdi...")
-    bot.infinity_polling(skip_pending=True)
+    
+    # --- CONFLICT BUSTER (Retry loop for 409 errors) ---
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            if "Conflict" in str(e):
+                logger.warning("⚠️ Ziddiyat (409) aniqlandi. 5 soniyadan keyin qayta urunib ko'ramiz...")
+                time.sleep(5)
+            else:
+                logger.error(f"❌ Kutilmagan xatolik: {e}")
+                time.sleep(10)
