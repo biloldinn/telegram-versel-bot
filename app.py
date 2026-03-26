@@ -16,9 +16,7 @@ ads.start_ads()
 pinger.start_pinger()
 
 # Webhook route
-logger.info(f"Registered Webhook route: /{TOKEN}")
-
-@app.route('/' + TOKEN, methods=['POST'])
+@app.route('/tg_webhook', methods=['POST'])
 def get_message():
     """Receive updates from Telegram."""
     if request.headers.get('content-type') == 'application/json':
@@ -42,9 +40,10 @@ def setup_webhook():
         logger.info(f"Setting up Webhook: {final_webhook_url}")
         try:
             bot.remove_webhook()
-            webhook_full_url = f"{final_webhook_url.rstrip('/')}/{TOKEN}"
+            # Use fixed endpoint instead of token for better routing stability
+            webhook_full_url = f"{final_webhook_url.rstrip('/')}/tg_webhook"
             bot.set_webhook(url=webhook_full_url, allowed_updates=['message', 'callback_query', 'channel_post'])
-            logger.info("✅ Webhook configured.")
+            logger.info(f"✅ Webhook configured at: {webhook_full_url}")
         except Exception as e:
             logger.error(f"Webhook setup failed: {e}")
 
