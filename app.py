@@ -33,13 +33,9 @@ def get_message():
 def health_check():
     return "Bot is active (Webhook Strategy)!", 200
 
-def main():
-    # Render dynamic port
-    port = int(os.environ.get("PORT", 8080))
-    
-    # Try multiple ways to get the public URL
+# --- Webhook Setup ---
+def setup_webhook():
     final_webhook_url = os.environ.get('RENDER_EXTERNAL_URL') or WEBHOOK_URL
-    
     if final_webhook_url:
         logger.info(f"Setting up Webhook: {final_webhook_url}")
         try:
@@ -48,11 +44,13 @@ def main():
             bot.set_webhook(url=webhook_full_url, allowed_updates=['message', 'callback_query', 'channel_post'])
             logger.info("✅ Webhook configured.")
         except Exception as e:
-            logger.error(f"Webhook setup failed: {e}. Bot might not receive messages but server is starting.")
-    
-    # ALWAYS start Flask server for Render health checks
-    logger.info(f"Starting server on 0.0.0.0:{port}...")
-    app.run(host="0.0.0.0", port=port)
+            logger.error(f"Webhook setup failed: {e}")
+
+# Run setup
+setup_webhook()
 
 if __name__ == "__main__":
-    main()
+    # Local fallback
+    port = int(os.environ.get("PORT", 8080))
+    logger.info(f"Starting server on 0.0.0.0:{port}...")
+    app.run(host="0.0.0.0", port=port)
