@@ -16,6 +16,8 @@ ads.start_ads()
 pinger.start_pinger()
 
 # Webhook route
+logger.info(f"Registered Webhook route: /{TOKEN}")
+
 @app.route('/' + TOKEN, methods=['POST'])
 def get_message():
     """Receive updates from Telegram."""

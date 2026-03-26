@@ -5,7 +5,7 @@ from logger import logger
 
 load_dotenv()
 
-TOKEN = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or '8580639697:AAFPv5TYWiWFXFxaMYQWPN7JzCwMUMYkVIQ'
+TOKEN = (os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or '8580639697:AAFPv5TYWiWFXFxaMYQWPN7JzCwMUMYkVIQ').strip()
 # Dynamic URL detection for Render, Railway or Manual
 WEBHOOK_URL = (
     os.environ.get('RENDER_EXTERNAL_URL') or 
