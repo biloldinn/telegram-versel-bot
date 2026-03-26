@@ -6,6 +6,9 @@ from config import WEBHOOK_URL
 
 def ping_self():
     """Continuously pings the bot's own health endpoint to keep it awake on Render/Railway."""
+    # Always pull latest from config to avoid stale imports
+    from config import WEBHOOK_URL
+    
     if not WEBHOOK_URL:
         logger.info("Pinger: WEBHOOK_URL not set. Skipping self-ping.")
         return
