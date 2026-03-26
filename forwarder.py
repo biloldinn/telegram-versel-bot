@@ -27,40 +27,41 @@ def handle_forwarding(message):
             sender = message.from_user
             sender_chat = message.sender_chat
             
-            # If it's a channel post or anonymous, sender might be None
+            # Detect anonymous admins and system bots
+            is_anon = False
             if sender:
-                is_anonymous_bot = sender.id in [1087968824, 777000, 136817688]
+                # Common IDs for anonymous/system users
+                if sender.id in [1087968824, 777000, 136817688]:
+                    is_anon = True
+            
+            if sender and not is_anon:
                 name = html.escape(sender.first_name + (f" {sender.last_name}" if sender.last_name else ""))
-                if not is_anonymous_bot:
-                    if sender.username:
-                        profile_link = f"<a href='https://t.me/{sender.username}'>{name}</a>"
-                    else:
-                        profile_link = f"<a href='tg://user?id={sender.id}'>{name}</a>"
+                if sender.username:
+                    profile_link = f"<a href='https://t.me/{sender.username}'><b>{name}</b></a> (@{sender.username})"
                 else:
-                    profile_link = f"<b>{name}</b> (Anonim Admin)"
+                    profile_link = f"<a href='tg://user?id={sender.id}'><b>{name}</b></a>"
             
             elif sender_chat:
-                name = html.escape(sender_chat.title or "Mijoz")
+                name = html.escape(sender_chat.title or "Guruh/Kanal")
                 username = sender_chat.username
                 if username:
-                    profile_link = f"<a href='https://t.me/{username}'>{name}</a>"
+                    profile_link = f"<a href='https://t.me/{username}'><b>{name}</b></a>"
                 else:
-                    profile_link = f"<b>{name}</b> (Kanal/Guruh)"
+                    profile_link = f"<b>{name}</b> (Haqiqiy shaxsi maxfiy)"
             
             else:
-                profile_link = "<i>Maxfiy Mijoz</i>"
+                profile_link = "<b>Yashirin profil</b> (Bot ko'ra olmadi)"
 
             profile_html = f"👤 <b>Mijoz:</b> {profile_link}"
             
             # Create inline button for easy profile access
             mk = types.InlineKeyboardMarkup()
-            if sender and not is_anonymous_bot:
-                if sender.username:
-                    mk.add(types.InlineKeyboardButton("✉️ Mijozga yozish", url=f"https://t.me/{sender.username}"))
-                else:
-                    mk.add(types.InlineKeyboardButton("👤 Profil (Faqat haydovchiga)", url=f"tg://user?id={sender.id}"))
+            if sender and not is_anon:
+                text = "✉️ Mijozga yozish" if sender.username else "👤 Profilni ochish"
+                url = f"https://t.me/{sender.username}" if sender.username else f"tg://user?id={sender.id}"
+                mk.add(types.InlineKeyboardButton(text, url=url))
             elif sender_chat and sender_chat.username:
-                mk.add(types.InlineKeyboardButton("👤 Profil (Kanal)", url=f"https://t.me/{sender_chat.username}"))
+                mk.add(types.InlineKeyboardButton("👤 Kanalni ko'rish", url=f"https://t.me/{sender_chat.username}"))
 
             # Forward based on content type
             if message.text:
