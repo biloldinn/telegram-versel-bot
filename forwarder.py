@@ -83,12 +83,12 @@ def handle_forwarding(message):
 
             logger.info(f"Message {message.message_id} forwarded and formatted.")
 
-            # 3. DELETE the original message from source (DISABLED based on user feedback)
-            # try:
-            #     bot.delete_message(message.chat.id, message.message_id)
-            #     logger.info(f"Source message {message.message_id} deleted successfully.")
-            # except Exception as d_err:
-            #     logger.warning(f"Could not delete message: {d_err}. Ensure bot is ADMIN in source group.")
+            # 3. DELETE the original message from source (ENABLED based on user request)
+            try:
+                bot.delete_message(message.chat.id, message.message_id)
+                logger.info(f"Source message {message.message_id} deleted successfully.")
+            except Exception as d_err:
+                logger.warning(f"Could not delete message: {d_err}. Ensure bot is ADMIN in source group.")
 
         except Exception as e:
             logger.error(f"❌ Forwarding logic critical error: {e}")
